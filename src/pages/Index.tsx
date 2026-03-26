@@ -1,120 +1,134 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Icon from '@/components/ui/icon';
 
-const ADJECTIVES = ['Северный', 'Тихий', 'Мудрый', 'Строгий', 'Честный', 'Верный', 'Смелый', 'Чёткий', 'Ясный', 'Твёрдый'];
-const NOUNS = ['Арктур', 'Меридиан', 'Кодекс', 'Параграф', 'Артикль', 'Статут', 'Протокол', 'Вердикт', 'Манускрипт', 'Документ'];
-
-function generatePseudonym(): string {
-  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  const num = Math.floor(Math.random() * 900) + 100;
-  return `${adj}${noun}${num}`;
-}
-
-type Section = 'home' | 'about' | 'psychology' | 'legal' | 'knowledge' | 'rules';
+type Section = 'home' | 'product' | 'pricing' | 'legal' | 'about' | 'contacts';
 
 const NAV_ITEMS: { id: Section; label: string }[] = [
   { id: 'home', label: 'Главная' },
-  { id: 'about', label: 'О проекте' },
-  { id: 'psychology', label: 'Психологическая поддержка' },
-  { id: 'legal', label: 'Юридическая консультация' },
-  { id: 'knowledge', label: 'База знаний' },
-  { id: 'rules', label: 'Правила и согласия' },
+  { id: 'product', label: 'Продукт' },
+  { id: 'pricing', label: 'Тарифы' },
+  { id: 'legal', label: 'Юридический модуль' },
+  { id: 'about', label: 'О компании' },
+  { id: 'contacts', label: 'Контакты' },
+];
+
+const COMPETITORS = [
+  { name: 'Ясно', model: 'B2C', price: '1 990 ₽/мес.', weak: 'Нет B2B; дорого для студентов', us: '✓' },
+  { name: 'Zigmund', model: 'B2C', price: 'от 2 500 ₽/конс.', weak: 'Нет анонимности в корпоративе', us: '✓' },
+  { name: 'Alter', model: 'B2B+B2C', price: 'от 99 000 ₽/мес.', weak: 'Нет юр. экспертизы; дорого', us: '✓' },
+  { name: 'Inhouse', model: 'Разработка', price: 'от 500 000 ₽', weak: 'Долго; высокие риски', us: '✓' },
+];
+
+const TARIFFS = [
+  {
+    id: 'start',
+    name: 'Старт',
+    price: '15 000',
+    period: 'мес.',
+    tag: '',
+    desc: 'Малый бизнес до 100 чел., колледжи',
+    features: [
+      'Telegram-бот с поддержкой',
+      '10 консультаций психолога/мес.',
+      'База знаний и самопомощь',
+      'Юридический пакет документов',
+      'Email-поддержка',
+    ],
+    cta: 'Начать пилот',
+    highlight: false,
+  },
+  {
+    id: 'optima',
+    name: 'Оптимум',
+    price: '49 000',
+    period: 'мес.',
+    tag: 'Популярный',
+    desc: 'Вузы и компании 100–500 чел.',
+    features: [
+      'Бот + веб-кабинет HR',
+      'Неограниченные консультации',
+      'Форум взаимоподдержки',
+      'Аналитика и отчёты',
+      'Юридический модуль полный',
+      'Приоритетная поддержка 24/7',
+    ],
+    cta: 'Получить демо',
+    highlight: true,
+  },
+  {
+    id: 'corp',
+    name: 'Корпоративный',
+    price: 'от 150 000',
+    period: 'мес.',
+    tag: 'Энтерпрайз',
+    desc: 'Крупные компании и федеральные вузы',
+    features: [
+      'Всё из «Оптимум»',
+      'Выделенный психолог',
+      'Интеграция с HR-системами',
+      'White Label брендирование',
+      'Обучение HR-команды',
+      'SLA 99,9% + страхование',
+    ],
+    cta: 'Запросить КП',
+    highlight: false,
+  },
+];
+
+const ROADMAP = [
+  { month: 'Месяц 1', title: 'Юридическая база', tasks: ['Регистрация ООО/ИП', 'Разработка договоров и политик', 'Прототип бота', 'Поиск пилотных клиентов'] },
+  { month: 'Месяц 2', title: 'MVP', tasks: ['Telegram-бот + веб-кабинет', 'Набор пула психологов', 'Подписание 3 пилотных договоров'] },
+  { month: 'Месяц 3', title: 'Пилот', tasks: ['Запуск у 3 клиентов', 'Сбор обратной связи', 'Юридический мониторинг'] },
+  { month: 'Месяц 4', title: 'Запуск', tasks: ['Активные продажи', 'Конференции и мероприятия', 'Реферальная программа'] },
 ];
 
 export default function Index() {
   const [activeSection, setActiveSection] = useState<Section>('home');
-  const [pseudonym, setPseudonym] = useState<string | null>(null);
-  const [showConsentModal, setShowConsentModal] = useState(false);
-  const [consentStep, setConsentStep] = useState(1);
-  const [consents, setConsents] = useState({ data: false, anon: false, terms: false });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [demoForm, setDemoForm] = useState({ name: '', org: '', email: '', size: '' });
+  const [demoSent, setDemoSent] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('slushay_pseudonym');
-    if (stored) {
-      setPseudonym(stored);
-    }
-  }, []);
-
-  const handleSectionClick = (section: Section) => {
-    if ((section === 'psychology' || section === 'legal') && !pseudonym) {
-      setShowConsentModal(true);
-    } else {
-      setActiveSection(section);
-      setMenuOpen(false);
-    }
-  };
-
-  const handleConsent = () => {
-    if (!consents.data || !consents.anon || !consents.terms) return;
-    const p = generatePseudonym();
-    localStorage.setItem('slushay_pseudonym', p);
-    setPseudonym(p);
-    setShowConsentModal(false);
-    setConsentStep(1);
-    setActiveSection('psychology');
-  };
+  const nav = (s: Section) => { setActiveSection(s); setMenuOpen(false); window.scrollTo(0, 0); };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* NAVBAR */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-border">
+
+      {/* ── NAVBAR ── */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-b border-border">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <button
-            onClick={() => setActiveSection('home')}
-            className="flex items-center gap-3 group"
-          >
+          <button onClick={() => nav('home')} className="flex items-center gap-3">
             <div className="w-8 h-8 bg-navy flex items-center justify-center">
               <span className="text-gold text-sm font-display font-bold">С</span>
             </div>
-            <span className="font-display text-xl font-semibold text-navy tracking-wide">
-              Слушай
-            </span>
-            <span className="text-xs font-body text-muted-foreground ml-1 hidden sm:block tracking-widest uppercase">
-              Jurist Edition
-            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-xl font-semibold text-navy">Слушай</span>
+              <span className="font-body text-xs font-bold text-gold tracking-widest uppercase">PRO</span>
+            </div>
           </button>
 
-          {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-7">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleSectionClick(item.id)}
-                className={`nav-link ${activeSection === item.id ? 'active' : ''}`}
-              >
+            {NAV_ITEMS.map(item => (
+              <button key={item.id} onClick={() => nav(item.id)}
+                className={`nav-link ${activeSection === item.id ? 'active' : ''}`}>
                 {item.label}
               </button>
             ))}
           </nav>
 
-          <div className="flex items-center gap-4">
-            {pseudonym && (
-              <div className="pseudonym-badge hidden sm:flex">
-                <Icon name="UserCheck" size={12} />
-                {pseudonym}
-              </div>
-            )}
-            {/* Mobile burger */}
-            <button
-              className="lg:hidden p-2 text-navy"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
+          <div className="flex items-center gap-3">
+            <button className="hidden sm:block btn-primary py-2 px-5 text-xs" onClick={() => nav('contacts')}>
+              Получить демо
+            </button>
+            <button className="lg:hidden p-2 text-navy" onClick={() => setMenuOpen(!menuOpen)}>
               <Icon name={menuOpen ? 'X' : 'Menu'} size={22} />
             </button>
           </div>
         </div>
-
-        {/* Mobile menu */}
         {menuOpen && (
           <div className="lg:hidden bg-white border-t border-border">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleSectionClick(item.id)}
-                className="block w-full text-left px-6 py-3.5 text-sm font-body font-medium text-navy hover:bg-secondary border-b border-border last:border-0"
-              >
+            {NAV_ITEMS.map(item => (
+              <button key={item.id} onClick={() => nav(item.id)}
+                className="block w-full text-left px-6 py-3.5 text-sm font-body font-medium text-navy hover:bg-secondary border-b border-border last:border-0">
                 {item.label}
               </button>
             ))}
@@ -123,500 +137,732 @@ export default function Index() {
       </header>
 
       <main className="pt-16">
-        {/* ── HOME ── */}
+
+        {/* ════════════════ HOME ════════════════ */}
         {activeSection === 'home' && (
           <div>
             {/* Hero */}
-            <section className="geometric-bg min-h-[88vh] flex items-center">
-              <div className="max-w-7xl mx-auto px-6 py-24 grid lg:grid-cols-2 gap-16 items-center relative z-10">
-                <div>
-                  <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-6 animate-fade-in animate-stagger-1">
-                    Юридический факультет · Проект поддержки
-                  </p>
-                  <h1 className="font-display text-5xl lg:text-7xl font-semibold text-white leading-[1.05] mb-6 animate-slide-up animate-stagger-2">
-                    Слушай.
-                    <br />
-                    <em className="text-gold not-italic">Помоги.</em>
-                    <br />
-                    Защити.
-                  </h1>
-                  <span className="gold-line mb-6 animate-fade-in animate-stagger-3" />
-                  <p className="font-body text-base text-blue-100 leading-relaxed max-w-md animate-fade-in animate-stagger-3">
-                    Анонимная мультиформатная платформа психологической
-                    и юридической поддержки студентов. Безопасно.
-                    Конфиденциально. В соответствии с 152-ФЗ.
-                  </p>
-                  <div className="flex flex-wrap gap-4 mt-10 animate-fade-in animate-stagger-4">
-                    <button
-                      className="btn-gold"
-                      onClick={() => handleSectionClick('psychology')}
-                    >
-                      Получить поддержку
-                    </button>
-                    <button
-                      className="btn-outline border-white text-white hover:bg-white hover:text-navy"
-                      onClick={() => setActiveSection('about')}
-                    >
-                      О проекте
-                    </button>
-                  </div>
-                </div>
-
-                <div className="hidden lg:flex flex-col gap-5 animate-fade-in animate-stagger-5">
-                  {[
-                    { icon: 'ShieldCheck', label: 'Полная анонимность', desc: 'Псевдоним генерируется автоматически. Никаких личных данных.' },
-                    { icon: 'Scale', label: 'Правовая защита', desc: 'Все процессы соответствуют 152-ФЗ и ФЗ «Об образовании».' },
-                    { icon: 'Clock', label: 'Доступность 24/7', desc: 'Помощь доступна в любое время через платформу.' },
-                  ].map((item) => (
-                    <div key={item.icon} className="flex gap-4 items-start p-5 bg-white/5 border border-white/10 backdrop-blur-sm">
-                      <div className="w-10 h-10 bg-gold/20 flex items-center justify-center flex-shrink-0">
-                        <Icon name={item.icon as any} size={18} className="text-gold" />
-                      </div>
-                      <div>
-                        <p className="font-body font-semibold text-white text-sm mb-1">{item.label}</p>
-                        <p className="font-body text-xs text-blue-200 leading-relaxed">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* Stats */}
-            <section className="bg-white border-b border-border">
-              <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-2 lg:grid-cols-4 gap-8">
-                {[
-                  { num: '60%', label: 'студентов испытывают симптомы выгорания' },
-                  { num: '15%', label: 'обращаются за помощью к специалисту' },
-                  { num: '152-ФЗ', label: 'полное соответствие законодательству' },
-                  { num: '24/7', label: 'доступность платформы поддержки' },
-                ].map((s) => (
-                  <div key={s.num} className="text-center lg:text-left">
-                    <p className="font-display text-4xl font-bold text-navy mb-2">{s.num}</p>
-                    <p className="font-body text-xs text-muted-foreground leading-relaxed">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Services */}
-            <section className="max-w-7xl mx-auto px-6 py-20">
-              <div className="mb-12">
-                <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Направления</p>
-                <h2 className="font-display text-4xl text-navy">Чем мы можем помочь</h2>
-              </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[
-                  {
-                    icon: 'Brain',
-                    title: 'Психологическая поддержка',
-                    desc: 'Анонимные обращения к психологу, инструменты самопомощи, чат-поддержка. Снижение стресса и преодоление выгорания.',
-                    section: 'psychology' as Section,
-                    tag: 'Анонимно',
-                  },
-                  {
-                    icon: 'Gavel',
-                    title: 'Юридическая консультация',
-                    desc: 'Правовые консультации от студентов-юристов под руководством практикующих специалистов. Безопасно и конфиденциально.',
-                    section: 'legal' as Section,
-                    tag: 'Конфиденциально',
-                  },
-                  {
-                    icon: 'BookOpen',
-                    title: 'База знаний',
-                    desc: 'Статьи, методики самопомощи, правовые справочники. Информация всегда под рукой.',
-                    section: 'knowledge' as Section,
-                    tag: 'Открытый доступ',
-                  },
-                ].map((card) => (
-                  <div key={card.icon} className="card-hover p-8 border border-border bg-white group cursor-pointer" onClick={() => handleSectionClick(card.section)}>
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="w-12 h-12 bg-secondary flex items-center justify-center group-hover:bg-navy transition-colors">
-                        <Icon name={card.icon as any} size={22} className="text-navy group-hover:text-gold transition-colors" />
-                      </div>
-                      <span className="text-xs font-body font-medium text-gold tracking-widest uppercase border border-gold/30 px-2 py-1">
-                        {card.tag}
-                      </span>
-                    </div>
-                    <h3 className="font-display text-2xl text-navy mb-3">{card.title}</h3>
-                    <p className="font-body text-sm text-muted-foreground leading-relaxed mb-6">{card.desc}</p>
-                    <div className="flex items-center gap-2 text-navy group-hover:text-gold transition-colors">
-                      <span className="text-xs font-body font-medium tracking-widest uppercase">Подробнее</span>
-                      <Icon name="ArrowRight" size={14} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* CTA */}
-            <section className="bg-secondary">
-              <div className="max-w-7xl mx-auto px-6 py-16 flex flex-col lg:flex-row items-center justify-between gap-8">
-                <div>
-                  <h2 className="font-display text-3xl text-navy mb-2">Готовы начать?</h2>
-                  <p className="font-body text-sm text-muted-foreground">Получите поддержку анонимно — регистрация не требуется.</p>
-                </div>
-                <button className="btn-primary flex-shrink-0" onClick={() => handleSectionClick('psychology')}>
-                  Начать анонимно
-                </button>
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* ── ABOUT ── */}
-        {activeSection === 'about' && (
-          <div className="max-w-7xl mx-auto px-6 py-20">
-            <div className="mb-12">
-              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">О нас</p>
-              <h1 className="font-display text-5xl text-navy mb-4">О проекте «Слушай»</h1>
-              <span className="gold-line" />
-            </div>
-            <div className="grid lg:grid-cols-3 gap-12">
-              <div className="lg:col-span-2 space-y-8">
-                <p className="font-body text-base text-foreground leading-relaxed">
-                  «Слушай» — первый правозащитный проект юридического факультета в сфере ментального здоровья. Платформа объединяет психологическую поддержку и юридическое консультирование в едином безопасном цифровом пространстве.
-                </p>
-                <div className="border-l-2 border-gold pl-6 py-2">
-                  <p className="font-display text-xl text-navy italic">
-                    «Более 60% студентов юрфака испытывают симптомы выгорания, но лишь 15% обращаются к специалистам. Мы меняем это.»
-                  </p>
-                </div>
-                <p className="font-body text-sm text-muted-foreground leading-relaxed">
-                  Проект реализован в соответствии с изменениями в Федеральный закон «Об образовании» 2025 года, рекомендующими вузам создавать системы психологической поддержки. Вся обработка данных соответствует требованиям 152-ФЗ «О персональных данных».
-                </p>
-                <div className="grid sm:grid-cols-2 gap-6">
-                  {[
-                    { icon: 'Target', title: 'Миссия', desc: 'Снизить барьеры для обращения за помощью через анонимность и доступность 24/7.' },
-                    { icon: 'Users', title: 'Команда', desc: 'Студенты-юристы под руководством практикующих специалистов и штатного психолога.' },
-                    { icon: 'Award', title: 'Признание', desc: 'Визитная карточка факультета и база для научных исследований.' },
-                    { icon: 'FileText', title: 'Правовая база', desc: 'Все процессы задокументированы и соответствуют действующему законодательству.' },
-                  ].map((item) => (
-                    <div key={item.icon} className="flex gap-4">
-                      <div className="w-10 h-10 bg-secondary flex items-center justify-center flex-shrink-0">
-                        <Icon name={item.icon as any} size={18} className="text-navy" />
-                      </div>
-                      <div>
-                        <p className="font-body font-semibold text-sm text-navy mb-1">{item.title}</p>
-                        <p className="font-body text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-6">
-                <div className="bg-navy p-8">
-                  <p className="font-display text-2xl text-white mb-6">Целевая аудитория</p>
-                  {[
-                    { label: 'Студенты', desc: 'Психологическая помощь и правовая информация' },
-                    { label: 'Штатный психолог', desc: 'Снижение нагрузки через автоматизацию' },
-                    { label: 'Участники команды', desc: 'Практический опыт в правовом сопровождении' },
-                    { label: 'Деканат', desc: 'Соответствие требованиям законодательства' },
-                  ].map((t, i) => (
-                    <div key={i} className="border-b border-white/10 py-4 last:border-0">
-                      <p className="font-body font-medium text-gold text-sm mb-1">{t.label}</p>
-                      <p className="font-body text-xs text-blue-200">{t.desc}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-6 border border-gold/30 bg-cream">
-                  <p className="font-body text-xs text-muted-foreground uppercase tracking-widest mb-3">Правовая основа</p>
-                  <p className="font-body text-sm text-navy leading-relaxed">ФЗ «Об образовании» (ред. 2025) · 152-ФЗ «О персональных данных»</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── PSYCHOLOGY ── */}
-        {activeSection === 'psychology' && (
-          <div className="max-w-7xl mx-auto px-6 py-20">
-            <div className="mb-12">
-              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Раздел</p>
-              <h1 className="font-display text-5xl text-navy mb-4">Психологическая поддержка</h1>
-              <span className="gold-line mb-6" />
-              {pseudonym && (
-                <div className="mt-4 flex items-center gap-3">
-                  <div className="pseudonym-badge">
-                    <Icon name="ShieldCheck" size={12} />
-                    Вы вошли как: <strong>{pseudonym}</strong>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="grid lg:grid-cols-3 gap-6 mb-12">
-              {[
-                {
-                  icon: 'MessageCircle',
-                  title: 'Анонимный чат',
-                  desc: 'Напишите психологу напрямую. Ответ поступает в течение рабочего дня.',
-                  badge: 'Скоро',
-                },
-                {
-                  icon: 'Calendar',
-                  title: 'Запись на приём',
-                  desc: 'Запись к штатному психологу факультета. Удобный выбор времени.',
-                  badge: 'Скоро',
-                },
-                {
-                  icon: 'HeartHandshake',
-                  title: 'Самопомощь',
-                  desc: 'Техники снижения стресса, дыхательные практики, дневник состояния.',
-                  badge: 'Доступно',
-                },
-              ].map((card) => (
-                <div key={card.icon} className="card-hover p-8 border border-border bg-white">
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="w-12 h-12 bg-secondary flex items-center justify-center">
-                      <Icon name={card.icon as any} size={22} className="text-navy" />
-                    </div>
-                    <span className={`text-xs font-body font-medium tracking-widest uppercase px-2 py-1 ${card.badge === 'Доступно' ? 'bg-gold/15 text-navy border border-gold/40' : 'bg-secondary text-muted-foreground border border-border'}`}>
-                      {card.badge}
+            <section className="geometric-bg min-h-[90vh] flex items-center">
+              <div className="max-w-7xl mx-auto px-6 py-24 relative z-10 w-full">
+                <div className="max-w-3xl">
+                  <div className="inline-flex items-center gap-2 border border-gold/30 bg-gold/10 px-4 py-2 mb-8">
+                    <Icon name="TrendingUp" size={12} className="text-gold" />
+                    <span className="font-body text-xs text-gold tracking-widest uppercase font-medium">
+                      Рынок ментального здоровья · Рост 25% в год
                     </span>
                   </div>
-                  <h3 className="font-display text-2xl text-navy mb-3">{card.title}</h3>
-                  <p className="font-body text-sm text-muted-foreground leading-relaxed mb-6">{card.desc}</p>
-                  <button className={`btn-primary w-full ${card.badge !== 'Доступно' ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={card.badge !== 'Доступно'}>
-                    {card.badge === 'Доступно' ? 'Открыть' : 'В разработке'}
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="bg-navy p-8 flex flex-col lg:flex-row items-start gap-6">
-              <Icon name="AlertTriangle" size={24} className="text-gold flex-shrink-0 mt-1" />
-              <div>
-                <p className="font-body font-semibold text-white mb-2">Экстренная ситуация?</p>
-                <p className="font-body text-sm text-blue-200 leading-relaxed">
-                  Если вы находитесь в кризисной ситуации или существует угроза жизни — обратитесь на телефон доверия:
-                  <strong className="text-gold"> 8-800-2000-122</strong> (бесплатно, круглосуточно).
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── LEGAL ── */}
-        {activeSection === 'legal' && (
-          <div className="max-w-7xl mx-auto px-6 py-20">
-            <div className="mb-12">
-              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Раздел</p>
-              <h1 className="font-display text-5xl text-navy mb-4">Юридическая консультация</h1>
-              <span className="gold-line mb-6" />
-              {pseudonym && (
-                <div className="pseudonym-badge mt-4">
-                  <Icon name="ShieldCheck" size={12} />
-                  Вы вошли как: <strong>{pseudonym}</strong>
-                </div>
-              )}
-            </div>
-            <div className="grid lg:grid-cols-2 gap-12">
-              <div className="space-y-6">
-                <p className="font-body text-base text-foreground leading-relaxed">
-                  Студенты-юристы под руководством практикующих специалистов оказывают правовую помощь по вопросам, связанным с учебным процессом, трудовыми отношениями и защитой персональных данных.
-                </p>
-                {[
-                  { icon: 'FileCheck', title: 'Учебные споры', desc: 'Помощь при академических конфликтах, отчислении, переводе.' },
-                  { icon: 'Lock', title: 'Персональные данные', desc: 'Защита прав при нарушении конфиденциальности.' },
-                  { icon: 'Briefcase', title: 'Трудовые вопросы', desc: 'Консультации по трудоустройству и стажировкам.' },
-                  { icon: 'FileText', title: 'Документы и согласия', desc: 'Разработка и проверка правовых документов.' },
-                ].map((item) => (
-                  <div key={item.icon} className="flex gap-4 p-5 border border-border bg-white card-hover">
-                    <div className="w-10 h-10 bg-secondary flex items-center justify-center flex-shrink-0">
-                      <Icon name={item.icon as any} size={18} className="text-navy" />
-                    </div>
-                    <div>
-                      <p className="font-body font-semibold text-sm text-navy mb-1">{item.title}</p>
-                      <p className="font-body text-xs text-muted-foreground">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-6">
-                <div className="bg-secondary p-8">
-                  <h3 className="font-display text-2xl text-navy mb-6">Подать обращение</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-body font-medium uppercase tracking-widest text-muted-foreground mb-2">Категория вопроса</label>
-                      <select className="w-full border border-border bg-white px-4 py-3 text-sm font-body text-navy focus:outline-none focus:border-navy">
-                        <option>Учебные споры</option>
-                        <option>Персональные данные</option>
-                        <option>Трудовые вопросы</option>
-                        <option>Иное</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-body font-medium uppercase tracking-widest text-muted-foreground mb-2">Описание ситуации</label>
-                      <textarea
-                        rows={5}
-                        className="w-full border border-border bg-white px-4 py-3 text-sm font-body text-navy focus:outline-none focus:border-navy resize-none"
-                        placeholder="Опишите вашу ситуацию. Ваш псевдоним будет прикреплён автоматически."
-                      />
-                    </div>
-                    <button className="btn-primary w-full">Отправить обращение</button>
-                  </div>
-                </div>
-                <div className="border border-gold/30 p-5 bg-cream">
-                  <p className="font-body text-xs text-muted-foreground leading-relaxed">
-                    <strong className="text-navy">Важно:</strong> Консультации носят информационный характер и не являются юридической помощью в смысле ФЗ «Об адвокатской деятельности».
+                  <h1 className="font-display text-5xl lg:text-7xl font-semibold text-white leading-[1.05] mb-6">
+                    Психологическая<br />
+                    поддержка сотрудников<br />
+                    <em className="text-gold not-italic">без юридических рисков.</em>
+                  </h1>
+                  <span className="gold-line mb-6" />
+                  <p className="font-body text-base text-blue-100 leading-relaxed max-w-xl mb-10">
+                    B2B-платформа для вузов и компаний. Анонимные консультации
+                    с психологами, юридически защищённый продукт, готовый к запуску
+                    за 2 недели. От&nbsp;15&nbsp;000&nbsp;₽/месяц.
                   </p>
+                  <div className="flex flex-wrap gap-4">
+                    <button className="btn-gold" onClick={() => nav('contacts')}>Получить демо</button>
+                    <button className="btn-outline border-white text-white hover:bg-white hover:text-navy" onClick={() => nav('pricing')}>
+                      Посмотреть тарифы
+                    </button>
+                  </div>
+                </div>
+
+                {/* Hero metrics */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-20">
+                  {[
+                    { val: '30+', label: 'млрд руб.', sub: 'объём рынка РФ' },
+                    { val: '700+', label: 'вузов', sub: 'потенциальных клиентов' },
+                    { val: '0 ₽', label: 'для пользователя', sub: 'платит организация' },
+                    { val: '152-ФЗ', label: 'соответствие', sub: 'юридическая защита' },
+                  ].map(m => (
+                    <div key={m.val} className="bg-white/5 border border-white/10 p-5">
+                      <p className="font-display text-3xl font-bold text-gold">{m.val}</p>
+                      <p className="font-body text-xs text-white font-medium mt-1">{m.label}</p>
+                      <p className="font-body text-xs text-blue-300 mt-0.5">{m.sub}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            </section>
 
-        {/* ── KNOWLEDGE ── */}
-        {activeSection === 'knowledge' && (
-          <div className="max-w-7xl mx-auto px-6 py-20">
-            <div className="mb-12">
-              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Раздел</p>
-              <h1 className="font-display text-5xl text-navy mb-4">База знаний</h1>
-              <span className="gold-line" />
-            </div>
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* Categories */}
-              <div className="lg:col-span-1 space-y-2">
-                {[
-                  { icon: 'Brain', label: 'Психологическое здоровье', count: 12 },
-                  { icon: 'Scale', label: 'Правовые основы', count: 8 },
-                  { icon: 'BookOpen', label: 'Методики самопомощи', count: 15 },
-                  { icon: 'Shield', label: 'Персональные данные', count: 5 },
-                  { icon: 'GraduationCap', label: 'Академические права', count: 9 },
-                ].map((cat) => (
-                  <button key={cat.label} className="w-full flex items-center justify-between px-5 py-4 border border-border bg-white hover:border-navy hover:bg-secondary transition-all text-left">
-                    <div className="flex items-center gap-3">
-                      <Icon name={cat.icon as any} size={16} className="text-navy" />
-                      <span className="font-body text-sm font-medium text-navy">{cat.label}</span>
-                    </div>
-                    <span className="text-xs font-body text-muted-foreground">{cat.count}</span>
-                  </button>
-                ))}
-              </div>
-              {/* Articles */}
-              <div className="lg:col-span-2 space-y-4">
-                {[
-                  { tag: 'Психология', title: 'Как распознать академическое выгорание: 10 признаков', date: '20 марта 2026' },
-                  { tag: 'Право', title: 'Ваши права при отчислении: пошаговое руководство', date: '18 марта 2026' },
-                  { tag: 'Самопомощь', title: 'Техника «5-4-3-2-1» для снижения тревоги перед экзаменом', date: '15 марта 2026' },
-                  { tag: 'Данные', title: '152-ФЗ простым языком: что вуз может хранить о вас', date: '12 марта 2026' },
-                  { tag: 'Психология', title: 'Перфекционизм студента-юриста: когда стремление к идеалу вредит', date: '8 марта 2026' },
-                ].map((article, i) => (
-                  <div key={i} className="card-hover p-6 border border-border bg-white cursor-pointer group">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <span className="text-xs font-body font-medium uppercase tracking-widest text-gold mb-3 block">{article.tag}</span>
-                        <h3 className="font-display text-xl text-navy group-hover:text-gold transition-colors mb-2">{article.title}</h3>
-                        <p className="font-body text-xs text-muted-foreground">{article.date}</p>
+            {/* Problem */}
+            <section className="max-w-7xl mx-auto px-6 py-20">
+              <div className="grid lg:grid-cols-2 gap-16 items-center">
+                <div>
+                  <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Проблема</p>
+                  <h2 className="font-display text-4xl text-navy mb-6">Рынок фрагментирован. Клиенты беззащитны.</h2>
+                  <div className="space-y-4">
+                    {[
+                      { icon: 'XCircle', text: 'Существующие сервисы стоят 2 000–5 000 ₽/мес. на пользователя — студентам недоступно' },
+                      { icon: 'XCircle', text: 'Вузы тратят деньги на разовые лекции, но нет системного решения' },
+                      { icon: 'XCircle', text: 'Юридические риски 152-ФЗ отпугивают потенциальных игроков от создания своего продукта' },
+                      { icon: 'XCircle', text: 'У конкурентов нет юридической экспертизы — клиенты несут все риски сами' },
+                    ].map((p, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <Icon name="XCircle" size={16} className="text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="font-body text-sm text-foreground leading-relaxed">{p.text}</p>
                       </div>
-                      <Icon name="ArrowRight" size={18} className="text-muted-foreground group-hover:text-gold transition-colors flex-shrink-0 mt-1" />
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+                <div className="space-y-4">
+                  <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Наше решение</p>
+                  {[
+                    { icon: 'CheckCircle', text: 'B2B-модель: платит организация, пользователь получает бесплатно' },
+                    { icon: 'CheckCircle', text: 'Юридическая экспертиза внутри команды — снимаем все правовые риски клиента' },
+                    { icon: 'CheckCircle', text: 'Запуск за 2 недели — готовое решение без разработки с нуля' },
+                    { icon: 'CheckCircle', text: 'SaaS-модель: масштабируется от 50 до 10 000 пользователей без роста затрат' },
+                  ].map((p, i) => (
+                    <div key={i} className="flex gap-3 items-start p-4 bg-white border border-border">
+                      <Icon name="CheckCircle" size={16} className="text-gold flex-shrink-0 mt-0.5" />
+                      <p className="font-body text-sm text-foreground leading-relaxed">{p.text}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            </section>
+
+            {/* Clients */}
+            <section className="bg-secondary">
+              <div className="max-w-7xl mx-auto px-6 py-16">
+                <div className="text-center mb-12">
+                  <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Клиенты</p>
+                  <h2 className="font-display text-4xl text-navy">Кому подходит «Слушай PRO»</h2>
+                </div>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {[
+                    { icon: 'GraduationCap', title: 'Государственные вузы', size: '700+ вузов', pay: 'Гранты и программы развития', badge: 'Средняя' },
+                    { icon: 'Building2', title: 'Частные вузы', size: '200+ вузов', pay: 'Конкурентное преимущество за студентов', badge: 'Высокая' },
+                    { icon: 'Briefcase', title: 'Крупные компании', size: '5 000+ компаний 1000+ чел.', pay: 'EAP — в тренде у HR', badge: 'Высокая' },
+                    { icon: 'Store', title: 'Средний бизнес', size: '100 000+ компаний', pay: 'Нет бюджета на штатного психолога', badge: 'Средняя' },
+                    { icon: 'BookMarked', title: 'Бизнес-школы', size: '500+ школ и колледжей', pay: 'Студенты ожидают сервис', badge: 'Высокая' },
+                    { icon: 'TrendingUp', title: 'Стартапы и IT-компании', size: 'Выгорание — главная проблема', pay: 'Wellbeing в культуре компании', badge: 'Высокая' },
+                  ].map(c => (
+                    <div key={c.title} className="card-hover p-6 bg-white border border-border">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-10 h-10 bg-secondary flex items-center justify-center">
+                          <Icon name={c.icon as 'GraduationCap'} size={18} className="text-navy" />
+                        </div>
+                        <span className={`text-xs font-body font-medium px-2 py-1 border ${c.badge === 'Высокая' ? 'border-gold/40 text-navy bg-gold/10' : 'border-border text-muted-foreground'}`}>
+                          Готовность: {c.badge}
+                        </span>
+                      </div>
+                      <h3 className="font-display text-xl text-navy mb-1">{c.title}</h3>
+                      <p className="font-body text-xs text-muted-foreground mb-2">{c.size}</p>
+                      <p className="font-body text-xs text-foreground">{c.pay}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* CTA Band */}
+            <section className="bg-navy">
+              <div className="max-w-7xl mx-auto px-6 py-14 flex flex-col lg:flex-row items-center justify-between gap-8">
+                <div>
+                  <h2 className="font-display text-3xl text-white mb-2">Готовы запустить пилот?</h2>
+                  <p className="font-body text-sm text-blue-300">Первые 3 клиента получают специальные условия — 20 000 ₽/мес.</p>
+                </div>
+                <div className="flex gap-4">
+                  <button className="btn-gold" onClick={() => nav('contacts')}>Стать пилотным клиентом</button>
+                  <button className="btn-outline border-white text-white hover:bg-white hover:text-navy" onClick={() => nav('pricing')}>Тарифы</button>
+                </div>
+              </div>
+            </section>
           </div>
         )}
 
-        {/* ── RULES ── */}
-        {activeSection === 'rules' && (
-          <div className="max-w-4xl mx-auto px-6 py-20">
-            <div className="mb-12">
-              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Документы</p>
-              <h1 className="font-display text-5xl text-navy mb-4">Правила и согласия</h1>
+        {/* ════════════════ PRODUCT ════════════════ */}
+        {activeSection === 'product' && (
+          <div className="max-w-7xl mx-auto px-6 py-20">
+            <div className="mb-14">
+              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Продукт</p>
+              <h1 className="font-display text-5xl text-navy mb-4">Что входит в платформу</h1>
               <span className="gold-line" />
             </div>
-            <div className="space-y-6">
+
+            {/* Modules */}
+            <div className="grid lg:grid-cols-2 gap-6 mb-16">
               {[
                 {
-                  icon: 'FileText',
-                  title: 'Политика конфиденциальности',
-                  desc: 'Описание принципов обработки и защиты персональных данных пользователей платформы в соответствии с 152-ФЗ.',
+                  icon: 'Bot',
+                  title: 'Telegram-бот',
+                  desc: 'Основная точка входа для пользователя. Анонимная запись к психологу, самодиагностика, уведомления. Uptime 99,9%.',
+                  tags: ['Анонимность', 'Доступен 24/7', 'Простой интерфейс'],
                 },
                 {
-                  icon: 'CheckSquare',
-                  title: 'Согласие на обработку персональных данных',
-                  desc: 'Форма информированного согласия на сбор и обработку данных, предоставляемых при использовании сервисов платформы.',
+                  icon: 'LayoutDashboard',
+                  title: 'Веб-кабинет HR',
+                  desc: 'Административная панель для HR-специалиста: аналитика, управление расписанием психологов, сводные отчёты (анонимно).',
+                  tags: ['Аналитика', 'Отчёты', 'Управление'],
                 },
                 {
-                  icon: 'ShieldCheck',
-                  title: 'Политика анонимности',
-                  desc: 'Принципы обеспечения анонимности, описание системы псевдонимов и условия снятия анонимности в экстренных случаях.',
+                  icon: 'Users',
+                  title: 'Сеть психологов',
+                  desc: 'Верифицированные специалисты с подтверждёнными дипломами. Строгий отбор, гибкий график, почасовая оплата.',
+                  tags: ['Верификация', 'Гибкий график', 'Качество'],
+                },
+                {
+                  icon: 'MessageSquare',
+                  title: 'Форум взаимоподдержки',
+                  desc: 'Модерируемое сообщество пользователей. Тематические треды, техники самопомощи, взаимная поддержка.',
+                  tags: ['Модерация', 'Сообщество', 'Самопомощь'],
+                },
+                {
+                  icon: 'BookOpen',
+                  title: 'База знаний',
+                  desc: 'Статьи, техники снижения стресса, правовые справочники. Контент создаётся командой и верифицированными психологами.',
+                  tags: ['Контент', 'Правовые материалы', 'Обновляется'],
                 },
                 {
                   icon: 'Scale',
-                  title: 'Пользовательское соглашение',
-                  desc: 'Правила использования платформы, разграничение ответственности, порядок разрешения споров.',
+                  title: 'Юридический модуль',
+                  desc: 'Готовые договоры, политики, согласия. Соответствие 152-ФЗ. Алгоритм при кризисных ситуациях. Разработано юристами.',
+                  tags: ['152-ФЗ', 'Договоры', 'Защита клиента'],
                 },
-                {
-                  icon: 'AlertCircle',
-                  title: 'Протокол экстренных ситуаций',
-                  desc: 'Порядок действий при угрозе жизни пользователя. Единственное основание для снятия анонимности.',
-                },
-              ].map((doc, i) => (
-                <div key={i} className="flex gap-5 p-7 border border-border bg-white card-hover">
-                  <div className="w-12 h-12 bg-secondary flex items-center justify-center flex-shrink-0">
-                    <Icon name={doc.icon as any} size={22} className="text-navy" />
+              ].map(m => (
+                <div key={m.title} className="card-hover p-8 border border-border bg-white group">
+                  <div className="w-12 h-12 bg-secondary flex items-center justify-center mb-5 group-hover:bg-navy transition-colors">
+                    <Icon name={m.icon as 'Bot'} size={22} className="text-navy group-hover:text-gold transition-colors" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-display text-xl text-navy mb-2">{doc.title}</h3>
-                    <p className="font-body text-sm text-muted-foreground leading-relaxed mb-4">{doc.desc}</p>
-                    <button className="btn-outline text-xs px-4 py-2">Читать документ</button>
-                  </div>
-                  <div className="flex-shrink-0 self-start">
-                    <span className="text-xs font-body text-muted-foreground border border-border px-2 py-1">PDF</span>
+                  <h3 className="font-display text-2xl text-navy mb-3">{m.title}</h3>
+                  <p className="font-body text-sm text-muted-foreground leading-relaxed mb-5">{m.desc}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {m.tags.map(t => (
+                      <span key={t} className="text-xs font-body border border-border px-2 py-1 text-muted-foreground">{t}</span>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-10 p-7 bg-navy">
-              <div className="flex gap-4 items-start">
-                <Icon name="Info" size={20} className="text-gold flex-shrink-0 mt-0.5" />
+
+            {/* Competitors table */}
+            <div className="mb-6">
+              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Анализ рынка</p>
+              <h2 className="font-display text-4xl text-navy mb-8">Почему клиенты выберут нас</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border border-border bg-white">
+                <thead>
+                  <tr className="bg-navy">
+                    <th className="px-5 py-4 text-left font-body text-xs font-medium uppercase tracking-widest text-gold">Сервис</th>
+                    <th className="px-5 py-4 text-left font-body text-xs font-medium uppercase tracking-widest text-gold">Модель</th>
+                    <th className="px-5 py-4 text-left font-body text-xs font-medium uppercase tracking-widest text-gold">Цена</th>
+                    <th className="px-5 py-4 text-left font-body text-xs font-medium uppercase tracking-widest text-gold">Слабое место</th>
+                    <th className="px-5 py-4 text-center font-body text-xs font-medium uppercase tracking-widest text-gold">Слушай PRO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPETITORS.map((c, i) => (
+                    <tr key={c.name} className={i % 2 === 0 ? 'bg-white' : 'bg-secondary'}>
+                      <td className="px-5 py-4 font-body font-semibold text-sm text-navy">{c.name}</td>
+                      <td className="px-5 py-4 font-body text-sm text-muted-foreground">{c.model}</td>
+                      <td className="px-5 py-4 font-body text-sm text-foreground">{c.price}</td>
+                      <td className="px-5 py-4 font-body text-sm text-muted-foreground">{c.weak}</td>
+                      <td className="px-5 py-4 text-center font-body text-sm font-bold text-gold">Выигрываем</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-navy">
+                    <td className="px-5 py-4 font-display text-xl text-gold font-semibold" colSpan={4}>Слушай PRO</td>
+                    <td className="px-5 py-4 text-center font-body text-sm text-white">Наш продукт</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* ROI */}
+            <div className="mt-14 grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1 bg-navy p-8">
+                <p className="font-display text-2xl text-white mb-2">ROI для клиента</p>
+                <p className="font-body text-sm text-blue-300 mb-6">Почему инвестиция в «Слушай PRO» окупается</p>
+                <span className="gold-line mb-6" />
+                <p className="font-body text-xs text-blue-200 leading-relaxed">
+                  Один выгоревший сотрудник стоит компании 3–6 месячных зарплат на замену и найм.
+                  При 100 сотрудниках даже снижение текучки на 1 человека в год покрывает год подписки «Оптимум».
+                </p>
+              </div>
+              <div className="lg:col-span-2 grid sm:grid-cols-2 gap-4">
+                {[
+                  { icon: 'TrendingDown', title: 'Снижение больничных', val: '−18%', desc: 'в среднем у клиентов EAP-программ' },
+                  { icon: 'UserMinus', title: 'Снижение текучки', val: '−12%', desc: 'за счёт программ поддержки сотрудников' },
+                  { icon: 'BarChart2', title: 'Рост вовлечённости', val: '+23%', desc: 'eNPS при наличии программ wellbeing' },
+                  { icon: 'ShieldCheck', title: 'Юридические риски', val: '0', desc: 'штрафов РКН при нашем сопровождении' },
+                ].map(r => (
+                  <div key={r.title} className="p-6 border border-border bg-white">
+                    <Icon name={r.icon as 'TrendingDown'} size={18} className="text-gold mb-3" />
+                    <p className="font-display text-3xl font-bold text-navy mb-1">{r.val}</p>
+                    <p className="font-body font-semibold text-sm text-navy mb-1">{r.title}</p>
+                    <p className="font-body text-xs text-muted-foreground">{r.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════ PRICING ════════════════ */}
+        {activeSection === 'pricing' && (
+          <div className="max-w-7xl mx-auto px-6 py-20">
+            <div className="mb-14 text-center">
+              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Тарифы</p>
+              <h1 className="font-display text-5xl text-navy mb-4">Прозрачное ценообразование</h1>
+              <p className="font-body text-sm text-muted-foreground max-w-xl mx-auto">
+                Подписка для организации — пользователи получают доступ бесплатно.
+                Без скрытых платежей. Договор с первого дня.
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-6 mb-14">
+              {TARIFFS.map(t => (
+                <div key={t.id} className={`relative flex flex-col border ${t.highlight ? 'border-gold bg-navy' : 'border-border bg-white'}`}>
+                  {t.tag && (
+                    <div className={`absolute -top-3 left-6 px-3 py-1 text-xs font-body font-bold uppercase tracking-widest ${t.highlight ? 'bg-gold text-navy' : 'bg-navy text-gold'}`}>
+                      {t.tag}
+                    </div>
+                  )}
+                  <div className={`p-8 border-b ${t.highlight ? 'border-white/10' : 'border-border'}`}>
+                    <p className={`font-body text-xs font-medium uppercase tracking-widest mb-2 ${t.highlight ? 'text-gold' : 'text-muted-foreground'}`}>{t.name}</p>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className={`font-display text-4xl font-bold ${t.highlight ? 'text-white' : 'text-navy'}`}>{t.price}</span>
+                      <span className={`font-body text-sm ${t.highlight ? 'text-blue-300' : 'text-muted-foreground'}`}>₽/{t.period}</span>
+                    </div>
+                    <p className={`font-body text-xs ${t.highlight ? 'text-blue-300' : 'text-muted-foreground'}`}>{t.desc}</p>
+                  </div>
+                  <div className="p-8 flex-1 flex flex-col">
+                    <ul className="space-y-3 flex-1">
+                      {t.features.map(f => (
+                        <li key={f} className="flex items-start gap-3">
+                          <Icon name="Check" size={14} className={`flex-shrink-0 mt-0.5 ${t.highlight ? 'text-gold' : 'text-navy'}`} />
+                          <span className={`font-body text-sm ${t.highlight ? 'text-blue-100' : 'text-foreground'}`}>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      className={`mt-8 w-full ${t.highlight ? 'btn-gold' : 'btn-primary'}`}
+                      onClick={() => nav('contacts')}
+                    >
+                      {t.cta}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Grant tariff */}
+            <div className="border border-dashed border-gold/40 p-7 bg-cream flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-10">
+              <Icon name="HandHeart" size={28} className="text-gold flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-body font-semibold text-navy mb-1">Грантовый тариф — 0–10 000 ₽/мес.</p>
+                <p className="font-body text-sm text-muted-foreground">
+                  Для государственных вузов с ограниченным бюджетом. Льготный тариф с возможностью
+                  софинансирования или пилотный проект без оплаты на 3 месяца.
+                </p>
+              </div>
+              <button className="btn-outline flex-shrink-0" onClick={() => nav('contacts')}>Узнать условия</button>
+            </div>
+
+            {/* Add-ons */}
+            <div>
+              <h2 className="font-display text-3xl text-navy mb-6">Дополнительные услуги</h2>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { icon: 'FileSearch', title: 'Юридический аудит', price: '50 000–150 000 ₽', desc: 'Проверка на соответствие 152-ФЗ' },
+                  { icon: 'GraduationCap', title: 'Обучение HR', price: '30 000 ₽/группа', desc: 'Курс по распознаванию выгорания' },
+                  { icon: 'Palette', title: 'White Label', price: '+50% к тарифу', desc: 'Брендирование под клиента' },
+                  { icon: 'BarChart2', title: 'Аналитика', price: 'В топ-тарифе', desc: 'Агрегированные отчёты (анонимно)' },
+                ].map(a => (
+                  <div key={a.title} className="p-5 border border-border bg-white">
+                    <Icon name={a.icon as 'FileSearch'} size={18} className="text-gold mb-3" />
+                    <p className="font-body font-semibold text-sm text-navy mb-1">{a.title}</p>
+                    <p className="font-body text-xs text-gold font-medium mb-2">{a.price}</p>
+                    <p className="font-body text-xs text-muted-foreground">{a.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════ LEGAL ════════════════ */}
+        {activeSection === 'legal' && (
+          <div className="max-w-7xl mx-auto px-6 py-20">
+            <div className="mb-14">
+              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Юридический модуль</p>
+              <h1 className="font-display text-5xl text-navy mb-4">Наш главный козырь</h1>
+              <span className="gold-line mb-6" />
+              <p className="font-body text-base text-muted-foreground max-w-2xl leading-relaxed">
+                В отличие от всех конкурентов, юридическая экспертиза — внутри нашей команды.
+                Клиент получает готовый продукт без юридических рисков.
+              </p>
+            </div>
+
+            {/* Selling message */}
+            <div className="bg-navy p-10 mb-12">
+              <div className="flex gap-5 items-start">
+                <Icon name="Quote" size={32} className="text-gold flex-shrink-0" />
                 <div>
-                  <p className="font-body font-semibold text-white mb-2">Лог обработки данных</p>
-                  <p className="font-body text-sm text-blue-200 leading-relaxed">
-                    Все действия с данными пользователей фиксируются в соответствии с требованиями 152-ФЗ.
-                    Журнал доступен уполномоченным лицам по официальному запросу.
+                  <p className="font-display text-2xl text-white leading-relaxed mb-4">
+                    «Вы получаете готовый сервис психологической поддержки,
+                    который не принесёт вам судебных рисков. Мы берём на себя
+                    всю юридическую сторону — от договоров до защиты персональных данных.»
                   </p>
+                  <p className="font-body text-sm text-gold">Продающее сообщение для клиента</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-12">
+              <div>
+                <h2 className="font-display text-3xl text-navy mb-6">Что входит в юридический пакет</h2>
+                <div className="space-y-4">
+                  {[
+                    { icon: 'FileText', title: 'Пользовательское соглашение', desc: 'Защищает клиента от претензий пользователей. Разграничение ответственности прописано явно.' },
+                    { icon: 'Lock', title: 'Политика обработки ПДн', desc: 'Соответствует 152-ФЗ. Проходит проверку Роскомнадзора. Регулярный аудит.' },
+                    { icon: 'CheckSquare', title: 'Электронные согласия', desc: 'Форма информированного согласия с возможностью отзыва. Логирование всех действий.' },
+                    { icon: 'AlertTriangle', title: 'Протокол кризисных ситуаций', desc: 'Алгоритм при угрозе жизни согласован с психологами и юристами. Единственное основание снятия анонимности.' },
+                    { icon: 'FileCheck', title: 'Договор с клиентом (B2B)', desc: 'Готовый шаблон договора на оказание услуг. Разграничение ответственности сторон.' },
+                    { icon: 'Shield', title: 'Страхование ответственности', desc: 'Опционально. Повышает доверие клиента и снижает его собственные риски.' },
+                  ].map(d => (
+                    <div key={d.title} className="flex gap-4 p-5 border border-border bg-white card-hover">
+                      <div className="w-10 h-10 bg-secondary flex items-center justify-center flex-shrink-0">
+                        <Icon name={d.icon as 'FileText'} size={18} className="text-navy" />
+                      </div>
+                      <div>
+                        <p className="font-body font-semibold text-sm text-navy mb-1">{d.title}</p>
+                        <p className="font-body text-xs text-muted-foreground leading-relaxed">{d.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h2 className="font-display text-3xl text-navy mb-6">Проблемы клиентов, которые мы решаем</h2>
+                {[
+                  { problem: 'Не понимают, как оформить работу с психологом юридически', solution: 'Готовые шаблоны договоров, согласий, политик — подключаются сразу' },
+                  { problem: 'Боятся штрафов РКН за утечку данных', solution: 'Документы разработаны под руководством преподавателей юрфака, соответствуют 152-ФЗ' },
+                  { problem: 'Не знают, как разграничить ответственность при кризисной ситуации', solution: 'Чёткий алгоритм действий прописан в пользовательском соглашении' },
+                  { problem: 'Хотят внедрить поддержку, но нет юридического отдела', solution: 'Мы берём юридическое сопровождение на себя' },
+                ].map((item, i) => (
+                  <div key={i} className="border border-border bg-white overflow-hidden">
+                    <div className="px-5 py-4 bg-secondary border-b border-border">
+                      <div className="flex gap-2 items-start">
+                        <Icon name="AlertCircle" size={14} className="text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="font-body text-xs text-muted-foreground">{item.problem}</p>
+                      </div>
+                    </div>
+                    <div className="px-5 py-4">
+                      <div className="flex gap-2 items-start">
+                        <Icon name="CheckCircle" size={14} className="text-gold flex-shrink-0 mt-0.5" />
+                        <p className="font-body text-sm text-navy font-medium">{item.solution}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="bg-secondary border border-border p-6 mt-4">
+                  <p className="font-body text-xs text-muted-foreground uppercase tracking-widest mb-3">Соответствие</p>
+                  <div className="flex flex-wrap gap-2">
+                    {['152-ФЗ «О персональных данных»', 'ФЗ «Об образовании» (ред. 2025)', 'ТК РФ', 'ФЗ «Об адвокатской деятельности»', 'GDPR-совместимость'].map(l => (
+                      <span key={l} className="font-body text-xs border border-navy/20 bg-white px-3 py-1.5 text-navy">{l}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* ════════════════ ABOUT ════════════════ */}
+        {activeSection === 'about' && (
+          <div className="max-w-7xl mx-auto px-6 py-20">
+            <div className="mb-14">
+              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">О компании</p>
+              <h1 className="font-display text-5xl text-navy mb-4">Команда и стратегия</h1>
+              <span className="gold-line" />
+            </div>
+
+            {/* Strategy */}
+            <div className="grid lg:grid-cols-3 gap-6 mb-16">
+              {[
+                { icon: 'Target', title: 'Качество — приоритет №1', desc: 'В B2B-сегменте репутация решает всё. Один инцидент с утечкой данных — и клиенты уходят. Качество — база для масштабирования.', num: '01' },
+                { icon: 'Handshake', title: 'Удержание клиентов — №2', desc: 'Для SaaS-бизнеса важнее не разовая продажа, а долгосрочная подписка. Инвестируем в онбординг и поддержку.', num: '02' },
+                { icon: 'DollarSign', title: 'Прибыль — приоритет №3', desc: 'Первый год — инвестиционный. Реинвестируем прибыль в разработку и маркетинг. Окупаемость — к концу 2-го года.', num: '03' },
+              ].map(s => (
+                <div key={s.num} className="p-8 border border-border bg-white">
+                  <p className="font-display text-6xl font-bold text-secondary text-right mb-4">{s.num}</p>
+                  <div className="w-10 h-10 bg-secondary flex items-center justify-center mb-4">
+                    <Icon name={s.icon as 'Target'} size={18} className="text-navy" />
+                  </div>
+                  <h3 className="font-display text-xl text-navy mb-3">{s.title}</h3>
+                  <p className="font-body text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Team */}
+            <h2 className="font-display text-4xl text-navy mb-8">Команда проекта</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
+              {[
+                { role: 'Руководитель проекта', who: 'Студент 3–4 курса', resp: 'Общее управление, стратегия, продажи B2B', icon: 'Crown' },
+                { role: 'Юридический директор', who: 'Студент-юрист 3–4 курса', resp: 'Договоры, политики, согласование с РКН, страхование', icon: 'Scale' },
+                { role: 'Продуктовый менеджер', who: 'Аналитический склад ума', resp: 'Проектирование функционала, CJM, сбор требований', icon: 'Layers' },
+                { role: 'Технический разработчик', who: 'IT-направление / аутсорс', resp: 'Разработка и поддержка бота и веб-кабинета', icon: 'Code2' },
+                { role: 'HR / Менеджер психологов', who: 'Студент-психолог или управленец', resp: 'Поиск, отбор, обучение психологов', icon: 'HeartHandshake' },
+                { role: 'Маркетолог / SMM', who: 'Навыки продвижения', resp: 'Привлечение B2B-клиентов, контент, презентации', icon: 'Megaphone' },
+              ].map(t => (
+                <div key={t.role} className="p-6 border border-border bg-white">
+                  <div className="w-10 h-10 bg-secondary flex items-center justify-center mb-4">
+                    <Icon name={t.icon as 'Crown'} size={18} className="text-navy" />
+                  </div>
+                  <p className="font-body text-xs font-medium uppercase tracking-widest text-gold mb-1">{t.role}</p>
+                  <p className="font-body font-semibold text-sm text-navy mb-2">{t.who}</p>
+                  <p className="font-body text-xs text-muted-foreground leading-relaxed">{t.resp}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Roadmap */}
+            <h2 className="font-display text-4xl text-navy mb-8">Дорожная карта — 4 месяца</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-16">
+              {ROADMAP.map((r, i) => (
+                <div key={r.month} className="relative">
+                  <div className={`p-6 border h-full ${i === 0 ? 'border-gold bg-navy' : 'border-border bg-white'}`}>
+                    <p className={`font-body text-xs font-medium uppercase tracking-widest mb-1 ${i === 0 ? 'text-gold' : 'text-muted-foreground'}`}>{r.month}</p>
+                    <h3 className={`font-display text-xl mb-4 ${i === 0 ? 'text-white' : 'text-navy'}`}>{r.title}</h3>
+                    <ul className="space-y-2">
+                      {r.tasks.map(task => (
+                        <li key={task} className="flex gap-2 items-start">
+                          <Icon name="ChevronRight" size={12} className={`flex-shrink-0 mt-1 ${i === 0 ? 'text-gold' : 'text-navy'}`} />
+                          <span className={`font-body text-xs leading-relaxed ${i === 0 ? 'text-blue-200' : 'text-muted-foreground'}`}>{task}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Finance */}
+            <h2 className="font-display text-4xl text-navy mb-8">Финансовая модель</h2>
+            <div className="grid lg:grid-cols-2 gap-8">
+              <div>
+                <p className="font-body text-xs font-medium uppercase tracking-widest text-gold mb-4">Прогноз выручки</p>
+                <div className="border border-border overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-secondary">
+                        <th className="px-4 py-3 text-left font-body text-xs text-muted-foreground">Период</th>
+                        <th className="px-4 py-3 text-left font-body text-xs text-muted-foreground">Клиенты</th>
+                        <th className="px-4 py-3 text-left font-body text-xs text-muted-foreground">Выручка</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { period: 'Мес. 1–3 (пилот)', clients: '3', revenue: '60 000 ₽' },
+                        { period: 'Мес. 4–6', clients: '8', revenue: '360 000 ₽' },
+                        { period: 'Мес. 7–12', clients: '15', revenue: '825 000 ₽' },
+                        { period: 'Год 2', clients: '30–50', revenue: '2,1–3,5 млн ₽' },
+                      ].map((row, i) => (
+                        <tr key={row.period} className={i % 2 === 0 ? 'bg-white' : 'bg-secondary'}>
+                          <td className="px-4 py-3 font-body text-sm text-navy">{row.period}</td>
+                          <td className="px-4 py-3 font-body text-sm text-muted-foreground">{row.clients}</td>
+                          <td className="px-4 py-3 font-body font-semibold text-sm text-navy">{row.revenue}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <p className="font-body text-xs font-medium uppercase tracking-widest text-gold mb-4">Стартовые затраты</p>
+                <div className="border border-border overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-secondary">
+                        <th className="px-4 py-3 text-left font-body text-xs text-muted-foreground">Статья</th>
+                        <th className="px-4 py-3 text-left font-body text-xs text-muted-foreground">Сумма</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { item: 'Разработка MVP', cost: '100 000 ₽' },
+                        { item: 'Юридическое оформление', cost: '0 ₽ (команда)' },
+                        { item: 'Регистрация ИП/ООО', cost: '5 000 ₽' },
+                        { item: 'Маркетинг (мес. 1)', cost: '50 000 ₽' },
+                        { item: 'Оборудование и ПО', cost: '15 000 ₽' },
+                      ].map((row, i) => (
+                        <tr key={row.item} className={i % 2 === 0 ? 'bg-white' : 'bg-secondary'}>
+                          <td className="px-4 py-3 font-body text-sm text-navy">{row.item}</td>
+                          <td className="px-4 py-3 font-body font-semibold text-sm text-navy">{row.cost}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-navy">
+                        <td className="px-4 py-3 font-body font-bold text-sm text-white">Итого</td>
+                        <td className="px-4 py-3 font-body font-bold text-sm text-gold">170 000 ₽</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════ CONTACTS ════════════════ */}
+        {activeSection === 'contacts' && (
+          <div className="max-w-5xl mx-auto px-6 py-20">
+            <div className="mb-14">
+              <p className="text-xs font-body font-medium tracking-[0.2em] uppercase text-gold mb-3">Контакты</p>
+              <h1 className="font-display text-5xl text-navy mb-4">Запросить демо</h1>
+              <span className="gold-line mb-6" />
+              <p className="font-body text-base text-muted-foreground max-w-xl">
+                Оставьте заявку — свяжемся в течение рабочего дня, проведём демонстрацию
+                и предложим индивидуальные условия.
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-5 gap-12">
+              <div className="lg:col-span-3">
+                {demoSent ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-16 h-16 bg-gold/15 flex items-center justify-center mb-5">
+                      <Icon name="CheckCircle" size={32} className="text-gold" />
+                    </div>
+                    <h2 className="font-display text-3xl text-navy mb-3">Заявка отправлена</h2>
+                    <p className="font-body text-sm text-muted-foreground max-w-sm">
+                      Спасибо! Мы свяжемся с вами в течение рабочего дня для согласования демонстрации.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    <div className="grid sm:grid-cols-2 gap-5">
+                      <div>
+                        <label className="block text-xs font-body font-medium uppercase tracking-widest text-muted-foreground mb-2">Ваше имя *</label>
+                        <input
+                          type="text"
+                          className="w-full border border-border bg-white px-4 py-3 text-sm font-body text-navy focus:outline-none focus:border-navy"
+                          placeholder="Иван Иванов"
+                          value={demoForm.name}
+                          onChange={e => setDemoForm(p => ({ ...p, name: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-body font-medium uppercase tracking-widest text-muted-foreground mb-2">Email *</label>
+                        <input
+                          type="email"
+                          className="w-full border border-border bg-white px-4 py-3 text-sm font-body text-navy focus:outline-none focus:border-navy"
+                          placeholder="ivan@company.ru"
+                          value={demoForm.email}
+                          onChange={e => setDemoForm(p => ({ ...p, email: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-body font-medium uppercase tracking-widest text-muted-foreground mb-2">Организация *</label>
+                      <input
+                        type="text"
+                        className="w-full border border-border bg-white px-4 py-3 text-sm font-body text-navy focus:outline-none focus:border-navy"
+                        placeholder="Название вуза или компании"
+                        value={demoForm.org}
+                        onChange={e => setDemoForm(p => ({ ...p, org: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-body font-medium uppercase tracking-widest text-muted-foreground mb-2">Размер организации</label>
+                      <select
+                        className="w-full border border-border bg-white px-4 py-3 text-sm font-body text-navy focus:outline-none focus:border-navy"
+                        value={demoForm.size}
+                        onChange={e => setDemoForm(p => ({ ...p, size: e.target.value }))}
+                      >
+                        <option value="">Выберите размер</option>
+                        <option>До 100 человек</option>
+                        <option>100–500 человек</option>
+                        <option>500–1000 человек</option>
+                        <option>Более 1000 человек</option>
+                      </select>
+                    </div>
+                    <button
+                      className={`btn-primary w-full py-4 ${(!demoForm.name || !demoForm.email || !demoForm.org) ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      disabled={!demoForm.name || !demoForm.email || !demoForm.org}
+                      onClick={() => setDemoSent(true)}
+                    >
+                      Отправить заявку на демо
+                    </button>
+                    <p className="font-body text-xs text-muted-foreground text-center">
+                      Нажимая кнопку, вы соглашаетесь с политикой обработки персональных данных
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="lg:col-span-2 space-y-5">
+                <div className="bg-navy p-7">
+                  <p className="font-display text-2xl text-white mb-5">Пилотный клиент</p>
+                  <p className="font-body text-sm text-blue-200 leading-relaxed mb-6">
+                    Первые 3 организации-партнёра получают специальные условия: 3 месяца за 20 000 ₽/мес.
+                    и помощь с юридическим оформлением.
+                  </p>
+                  <div className="space-y-3">
+                    {['Сниженная цена на 3 месяца', 'Юридический аудит включён', 'Персональный менеджер', 'Приоритетная разработка фич'].map(b => (
+                      <div key={b} className="flex gap-2 items-center">
+                        <Icon name="Check" size={13} className="text-gold flex-shrink-0" />
+                        <span className="font-body text-sm text-blue-100">{b}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="p-6 border border-border bg-secondary space-y-4">
+                  {[
+                    { icon: 'Clock', label: 'Ответим в течение', val: '1 рабочего дня' },
+                    { icon: 'CalendarCheck', label: 'Демо-звонок', val: '30–45 минут' },
+                    { icon: 'FileText', label: 'Договор', val: 'С первого дня' },
+                  ].map(c => (
+                    <div key={c.label} className="flex items-center gap-3">
+                      <Icon name={c.icon as 'Clock'} size={16} className="text-gold flex-shrink-0" />
+                      <div>
+                        <p className="font-body text-xs text-muted-foreground">{c.label}</p>
+                        <p className="font-body text-sm font-semibold text-navy">{c.val}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
 
-      {/* FOOTER */}
+      {/* ── FOOTER ── */}
       <footer className="bg-navy mt-20">
         <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="grid lg:grid-cols-4 gap-8 mb-10">
-            <div>
+          <div className="grid lg:grid-cols-5 gap-8 mb-10">
+            <div className="lg:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 bg-gold/20 flex items-center justify-center">
                   <span className="text-gold text-sm font-display font-bold">С</span>
                 </div>
                 <span className="font-display text-xl text-white">Слушай</span>
+                <span className="font-body text-xs font-bold text-gold tracking-widest uppercase">PRO</span>
               </div>
-              <p className="font-body text-xs text-blue-300 leading-relaxed">
-                Платформа психологической и юридической поддержки студентов юридического факультета.
+              <p className="font-body text-xs text-blue-300 leading-relaxed max-w-xs">
+                B2B-платформа психологической поддержки для вузов и компаний.
+                Юридически защищённое решение. Запуск за 2 недели.
               </p>
             </div>
             {[
-              {
-                title: 'Разделы',
-                links: ['Главная', 'О проекте', 'Психологическая поддержка', 'Юридическая консультация'],
-              },
-              {
-                title: 'Ресурсы',
-                links: ['База знаний', 'Правила и согласия', 'Политика конфиденциальности'],
-              },
-              {
-                title: 'Контакты',
-                links: ['Деканат юрфака', 'Телефон доверия: 8-800-2000-122'],
-              },
-            ].map((col) => (
+              { title: 'Продукт', links: ['Главная', 'Продукт', 'Тарифы', 'Юридический модуль'] },
+              { title: 'Компания', links: ['О компании', 'Команда', 'Дорожная карта', 'Контакты'] },
+              { title: 'Правовая база', links: ['152-ФЗ', 'Политика ПДн', 'Пользовательское соглашение'] },
+            ].map(col => (
               <div key={col.title}>
                 <p className="font-body text-xs font-medium uppercase tracking-widest text-gold mb-4">{col.title}</p>
                 <ul className="space-y-2">
-                  {col.links.map((link) => (
+                  {col.links.map(link => (
                     <li key={link}>
                       <span className="font-body text-xs text-blue-300 cursor-pointer hover:text-white transition-colors">{link}</span>
                     </li>
@@ -627,107 +873,16 @@ export default function Index() {
           </div>
           <div className="section-divider opacity-20 mb-6" />
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="font-body text-xs text-blue-400">
-              © 2026 «Слушай» · Jurist Edition · Все данные защищены в соответствии с 152-ФЗ
-            </p>
-            <div className="flex items-center gap-2">
-              <Icon name="Shield" size={12} className="text-gold" />
-              <span className="font-body text-xs text-blue-400">Анонимность гарантирована</span>
+            <p className="font-body text-xs text-blue-400">© 2026 «Слушай PRO» · B2B-платформа ментального здоровья · 152-ФЗ</p>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Icon name="Shield" size={12} className="text-gold" />
+                <span className="font-body text-xs text-blue-400">Юридическая защита клиентов</span>
+              </div>
             </div>
           </div>
         </div>
       </footer>
-
-      {/* CONSENT MODAL */}
-      {showConsentModal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowConsentModal(false)}>
-          <div className="bg-white w-full max-w-lg mx-4 animate-slide-up">
-            {/* Header */}
-            <div className="bg-navy px-8 py-6 flex items-start justify-between">
-              <div>
-                <p className="font-body text-xs text-gold uppercase tracking-widest mb-1">Шаг {consentStep} из 2</p>
-                <h2 className="font-display text-2xl text-white">
-                  {consentStep === 1 ? 'Согласие на обработку данных' : 'Ваш анонимный псевдоним'}
-                </h2>
-              </div>
-              <button onClick={() => setShowConsentModal(false)} className="text-white/50 hover:text-white transition-colors mt-1">
-                <Icon name="X" size={18} />
-              </button>
-            </div>
-
-            <div className="px-8 py-8">
-              {consentStep === 1 ? (
-                <div className="space-y-5">
-                  <p className="font-body text-sm text-muted-foreground leading-relaxed">
-                    Перед использованием сервисов платформы необходимо ознакомиться с условиями и дать согласие в соответствии с требованиями 152-ФЗ.
-                  </p>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        key: 'data' as const,
-                        title: 'Обработка обезличенных данных',
-                        desc: 'Согласен на сбор и обработку обезличенных данных (без привязки к личности) для улучшения качества поддержки.',
-                      },
-                      {
-                        key: 'anon' as const,
-                        title: 'Условия анонимности',
-                        desc: 'Ознакомлен с протоколом экстренных ситуаций: анонимность может быть снята только при прямой угрозе жизни.',
-                      },
-                      {
-                        key: 'terms' as const,
-                        title: 'Пользовательское соглашение',
-                        desc: 'Принимаю правила платформы и подтверждаю, что являюсь студентом юридического факультета.',
-                      },
-                    ].map((item) => (
-                      <label key={item.key} className="flex gap-4 cursor-pointer p-4 border border-border hover:border-navy transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={consents[item.key]}
-                          onChange={(e) => setConsents((prev) => ({ ...prev, [item.key]: e.target.checked }))}
-                          className="mt-0.5 accent-navy flex-shrink-0 w-4 h-4"
-                        />
-                        <div>
-                          <p className="font-body font-semibold text-sm text-navy mb-1">{item.title}</p>
-                          <p className="font-body text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  <button
-                    className={`btn-primary w-full ${(!consents.data || !consents.anon || !consents.terms) ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    disabled={!consents.data || !consents.anon || !consents.terms}
-                    onClick={() => setConsentStep(2)}
-                  >
-                    Продолжить
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6 text-center">
-                  <div className="flex justify-center">
-                    <div className="w-16 h-16 bg-secondary flex items-center justify-center">
-                      <Icon name="UserCheck" size={28} className="text-navy" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-body text-sm text-muted-foreground mb-4">
-                      Для обеспечения анонимности системой сгенерирован уникальный псевдоним:
-                    </p>
-                    <div className="pseudonym-badge justify-center text-lg py-3 px-6 font-semibold">
-                      {generatePseudonym()}
-                    </div>
-                    <p className="font-body text-xs text-muted-foreground mt-3">
-                      Псевдоним сохранён в вашем браузере и не передаётся третьим лицам.
-                    </p>
-                  </div>
-                  <button className="btn-gold w-full" onClick={handleConsent}>
-                    Начать работу с платформой
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
